@@ -1,20 +1,13 @@
-print("Start imports")
 import uproot
-print("Imported uproot")
 import time
 import numpy as np
-print("Imported NumPy")
 import matplotlib.pyplot as plt
-print("Imported Matplotlib")
 from matplotlib.colors import LogNorm
-print("Imported LogNorm")
 import awkward as ak
 import pickle 
 import psutil
 import os
-print("End imports")
 
-process = psutil.Process(os.getpid())
 
 file_path    = "/eos/experiment/wcte/data/2025_commissioning/processed_offline_data/production_v0_5/1610/WCTE_offline_R1610S0_VME_matched.root"
 tree_name    = "WCTEReadoutWindows"        # This will not change
@@ -37,6 +30,7 @@ hc_group = [9, 10]
 hc_charge_cut = 150 # Only hits below this value
 muon_tagger_group = [24, 25]
 muon_tagger_cut = 125 # at least one of the two muon tagger channels must be above this value
+
 # Load all four branches into NumPy arrays
 branches = [
     "beamline_pmt_tdc_times",
@@ -44,8 +38,8 @@ branches = [
     "beamline_pmt_qdc_charges",
     "beamline_pmt_qdc_ids",
 ]
-load_pickle_data = True #set false to regenerate pickled data
-if load_pickle_data==False : 
+regenerate_pickle_files = True #set false to regenerate pickled data
+if regenerate_pickle_files==True : 
     print("Loading data...")
     data = tree.arrays(branches, library="ak")
     print(len(data["beamline_pmt_tdc_times"]), "events loaded")
@@ -59,6 +53,7 @@ if load_pickle_data==False :
     ref0 = ak.firsts(tdc_times[mask_ref0])
     ref1 = ak.firsts(tdc_times[mask_ref1])
     corrected_tdc_times = ak.where(tdc_ids < reference_ids[0],tdc_times - ref0[:,None],tdc_times - ref1[:,None])
+    #mask for triggers where reference is missing
     missing_reference_mask = (~ak.is_none(ref0)) & (~ak.is_none(ref1))
 
     #T0 Hits 
@@ -79,7 +74,7 @@ if load_pickle_data==False :
     have_t0_mask = np.all(t0_hits != np.nan, axis=1) 
 
     #T1 Hits 
-    #make a numpy array of shape  (n_events, n_channels) with the earliest hit time for each channel in t0_group and t1_group
+    #make a numpy array of shape  (n_events, n_channels) with the earliest hit time for each channel t1_group
     t1_hit_times_per_channel = []
     for ch in t1_group:
         mask = tdc_ids == ch
@@ -94,7 +89,7 @@ if load_pickle_data==False :
     t1_hits = np.where(t1_hits == None, np.nan, t1_hits).astype(float)
     have_t1_mask = np.all(t1_hits != np.nan, axis=1) 
 
-    #calculate the mean where there are hits on all the channels, otherwise None
+    #calculate the mean where there are hits on all the channels, otherwise nan
     t0_avgs = np.mean(t0_hits, axis=1)
     t1_avgs = np.mean(t1_hits, axis=1)
     tof_vals = t1_avgs - t0_avgs
@@ -107,7 +102,7 @@ if load_pickle_data==False :
     plt.xlabel("⟨T0⟩ (ns)")
     plt.ylabel("Counts")
     plt.title("T0 average time distribution")
-    # plt.savefig("figs/T0AvTime.png")
+    # plt.savefig("event_selection_crossing_muon_figures/T0AvTime.png")
     plt.close()
 
     plt.figure()
@@ -115,7 +110,7 @@ if load_pickle_data==False :
     plt.xlabel("⟨T1⟩ (ns)")
     plt.ylabel("Counts")
     plt.title("T1 average time distribution")
-    # plt.savefig("figs/T1AvTime.png")
+    # plt.savefig("event_selection_crossing_muon_figures/T1AvTime.png")
     plt.close()
 
     plt.figure()
@@ -125,7 +120,7 @@ if load_pickle_data==False :
     plt.xlim(10,30)
     # plt.yscale("log")
     plt.title("TOF (T0 minus T1) distribution")
-    # plt.savefig("figs/T0T1TimeDiff.png")
+    # plt.savefig("event_selection_crossing_muon_figures/T0T1TimeDiff.png")
     plt.close()
 
     #ACT Eveto Hits
@@ -154,7 +149,7 @@ if load_pickle_data==False :
     plt.ylabel("Counts")
     plt.yscale("log")
     plt.title("Histogram of summed ACT-eveto charges")
-    # plt.savefig("figs/ACTEvetoCharge.png")
+    # plt.savefig("event_selection_crossing_muon_figures/ACTEvetoCharge.png")
 
     #ACT Tagger Hits
     print("Doing ACT tagger...")
@@ -177,7 +172,7 @@ if load_pickle_data==False :
     plt.ylabel("Counts")
     plt.yscale("log")
     plt.title("Histogram of summed ACT-Tagger charges")
-    # plt.savefig("figs/ACTTaggerCharge.png")
+    # plt.savefig("event_selection_crossing_muon_figures/ACTTaggerCharge.png")
 
     #HC Hits
     print("Doing HC hits...")
@@ -203,7 +198,7 @@ if load_pickle_data==False :
     plt.ylabel("Counts")
     plt.yscale("log")
     plt.title("Histogram of summed HC charges")
-    # plt.savefig("figs/HCCharge.png")
+    # plt.savefig("event_selection_crossing_muon_figures/HCCharge.png")
 
     #T4 Hits 
     print("Doing T4 hits...")
@@ -234,7 +229,7 @@ if load_pickle_data==False :
     plt.ylabel("Counts")
     plt.yscale("log")
     plt.title("Histogram of T4 charges")
-    # plt.savefig("figs/T4Charge.png")
+    # plt.savefig("event_selection_crossing_muon_figures/T4Charge.png")
 
     #QDC readout failure
     print("Checking QDC readout...")
@@ -245,7 +240,7 @@ if load_pickle_data==False :
     plt.ylabel("Counts")
     plt.yscale("log")
     plt.title("Histogram of number of QDC hits per event")
-    # plt.savefig("figs/NQDC.png")
+    # plt.savefig("event_selection_crossing_muon_figures/NQDC.png")
     plt.close()
     #QDC mask where there are not 44 hits
     qdc_readout_mask = n_qdc_hits == 44
@@ -274,7 +269,7 @@ if load_pickle_data==False :
     plt.ylabel("Counts")
     plt.yscale("log")
     plt.title("Histogram of Muon Tagger charges")
-    # plt.savefig("figs/MuonTaggerCharge.png")
+    # plt.savefig("event_selection_crossing_muon_figures/MuonTaggerCharge.png")
     plt.close()
 
     #pickle the masks and relevant arrays for later use
@@ -292,7 +287,7 @@ if load_pickle_data==False :
         }, f)
 
 #load pickled data
-if load_pickle_data==True:
+if regenerate_pickle_files==False:
     print("Loading pickled data...")
     with open("event_selection_data.pkl", "rb") as f:
         pickled_data = pickle.load(f)
@@ -349,10 +344,9 @@ plt.xlabel("ACT Group 2 total QDC charge")
 plt.ylabel("Counts")
 plt.yscale("log")
 plt.title("Histogram of summed ACT-Tagger charges for selection steps")
-plt.savefig("figs/ACTTaggerCharge_Selection.png")
+plt.savefig("event_selection_crossing_muon_figures/ACTTaggerCharge_Selection.png")
 
 print("Plotting 2D histograms...")
-print(act_group2_l,act_group2_l.shape)
 cuts = [beam_selection,pass_eveto, pass_muon_selecton,pass_muon_selecton_act_cut]
 cut_names = ["Beam_selection", "E_veto_events", "Muon_tagger","muon_selecton_act_cut"]
 for i, (cut, cut_name) in enumerate(zip(cuts,cut_names)):
@@ -369,7 +363,7 @@ for i, (cut, cut_name) in enumerate(zip(cuts,cut_names)):
     plt.xlabel("ACT Group 2 Left total QDC charge")
     plt.ylabel("ACT Group 2 Right total QDC charge")
     plt.title("ACT Group 2 Left vs Right QDC charge\n"+cut_name)
-    plt.savefig("figs/group2_l_vs_r_"+cut_name+".png")
+    plt.savefig("event_selection_crossing_muon_figures/group2_l_vs_r_"+cut_name+".png")
     plt.close()
 
 plt.figure()
@@ -380,7 +374,7 @@ plt.xlabel("T0–T1 (ns)")
 plt.ylabel("Counts")
 plt.yscale("log")
 plt.title("Histogram of TOF for selection steps")
-plt.savefig("figs/TOF_Selection.png")
+plt.savefig("event_selection_crossing_muon_figures/TOF_Selection.png")
 plt.close()
 #### load WCTE data to apply cuts
 
@@ -397,10 +391,10 @@ plt.legend()
 plt.xlabel("WCTE Hit Times (ns)")
 plt.ylabel("Counts")
 plt.title("WCTE Hit Time Distribution")
-plt.savefig("figs/WCTEHitTimes.png")
+plt.savefig("event_selection_crossing_muon_figures/WCTEHitTimes.png")
 plt.close()
 
-if load_pickle_data==False:  
+if regenerate_pickle_files==True:  
     start = 0
     event_total_charge = []
     event_nhits = []
@@ -431,7 +425,7 @@ if load_pickle_data==False:
             "event_wcte_dq_mask": event_wcte_dq_mask,
         }, f)
         
-if load_pickle_data==True:
+if regenerate_pickle_files==False:
     print("Loading pickled WCTE event data...")
     with open("wcte_event_data.pkl", "rb") as f:
         pickled_wcte_data = pickle.load(f)
@@ -465,7 +459,7 @@ plt.xlabel("WCTE Number of Hits")
 plt.ylabel("Triggers")
 # plt.yscale("log")
 plt.title("WCTE Number of Hits Distribution")
-plt.savefig("figs/WCTENHits_Selection.png")
+plt.savefig("event_selection_crossing_muon_figures/WCTENHits_Selection.png")
 plt.close()
 
 plt.figure()
@@ -483,7 +477,7 @@ plt.xlabel("WCTE Total Charge")
 plt.ylabel("Triggers")
 # plt.yscale("log")
 plt.title("WCTE Total Charge Distribution")
-plt.savefig("figs/WCTETotalCharge_Selection.png")
+plt.savefig("event_selection_crossing_muon_figures/WCTETotalCharge_Selection.png")
 
 #investiagate electrons with muon-like wcte charge
 electron_wcte_muon_like_mask = electron_selection & (np.array(event_total_charge)>4.5e5) & (np.array(event_total_charge)<5.5e5)
@@ -495,12 +489,12 @@ plt.legend()
 plt.xlabel("ACT Group 1 total QDC charge")
 plt.ylabel("Triggers")
 plt.title("ACT Group 1 total QDC charge for E_veto events with muon-like WCTE charge")
-plt.savefig("figs/ACTEvetoCharge_ElectronMuonLike.png")
+plt.savefig("event_selection_crossing_muon_figures/ACTEvetoCharge_ElectronMuonLike.png")
 plt.close()
 
 print(f"Memory usage: {process.memory_info().rss / 1024**2:.2f} MB")
 
-if load_pickle_data==False:  
+if regenerate_pickle_files==True:  
     start = 0
     
     selected_events = []
@@ -524,7 +518,7 @@ if load_pickle_data==False:
     print(f"Saved {len(selected_events)} events to selected_events.pkl")
     
         
-if load_pickle_data:
+if regenerate_pickle_files==False:
     print("Loading pickled WCTE event data...")
     with open("crossing_muon_selection.pkl", "rb") as f:
         pickled_wcte_data = pickle.load(f)

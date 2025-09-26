@@ -30,7 +30,7 @@ plt.xlabel("WCTE Total Charge")
 plt.ylabel("Triggers")
 # plt.yscale("log")
 plt.title("WCTE Total Charge Distribution")
-plt.savefig("event_selection_crossing_muon_figures/crossing_muon_charge_distribution.png")
+plt.savefig("figs/crossing_muon_charge_distribution.png")
 plt.close()
 
 wcte_hit_mask = detector_hits & timing_mask & hit_pmt_readout_mask
