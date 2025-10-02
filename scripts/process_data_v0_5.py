@@ -245,11 +245,18 @@ if __name__ == "__main__":
     parser.add_argument("-i","--input_files",nargs='+', help="Path to input ROOT file or files")
     parser.add_argument("-r","--run_number", help="Run Number")
     parser.add_argument("-o","--output_dir", help="Directory to write output file")
+    # parser = argparse.ArgumentParser()
+    parser.add_argument("--not_official_const", action="store_true",help="Flag to set official = false in const lookup")
     args = parser.parse_args()
     
     #get calibration constants
     calibration_db_interface = CalibrationDBInterface()
-    timing_offsets_list, timing_constant_revision_id, timing_constant_insert_time = calibration_db_interface.get_calibration_constants(args.run_number, 0, "timing_offsets", 1)
+    official = 1
+    
+    if args.not_official_const:
+        official = 0 
+    print("official is",official,args.not_official_const)
+    timing_offsets_list, timing_constant_revision_id, timing_constant_insert_time = calibration_db_interface.get_calibration_constants(args.run_number, 0, "timing_offsets", official)
     timing_offsets_dict = {}
     #load into dict
     for offset in timing_offsets_list:
