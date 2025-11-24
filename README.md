@@ -1,3 +1,6 @@
+## Contribution Rules
+Main branch on WCTE/analysis_tools is protected - please open a pull request (either from your own branch or fork) to push changes to main branch
+
 Installation:
 
 git clone <git repo location>
