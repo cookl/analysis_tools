@@ -157,7 +157,15 @@ if __name__ == "__main__":
                         wf_chan    = event["pmt_waveform_pmt_channel_ids"]
                         event_readout_number = event["readout_number"]
                         
-                        wf_process = np.array(wf_waveforms)
+                        try:
+                            wf_process = np.array(wf_waveforms)
+                        except:
+                            print("Problem converting waveforms to numpy array, probably caused by different lengths of waveforms in event ",iev)
+                            wf_lengths_debug = ak.num(wf_waveforms).to_numpy()
+                            debug_wf_process_card = np.array(wf_card)
+                            print("Waveform lengths in event:",np.unique(wf_lengths_debug))
+                            print("Cards ",np.unique(debug_wf_process_card[wf_lengths_debug!=64]),"have waveforms != 64 samples")
+                            raise Exception("Cannot process event with different length waveforms")    
                         wf_length = wf_process.shape[1]
                         wf_process_start = np.array(wf_start)
                         wf_process_card = np.array(wf_card)
