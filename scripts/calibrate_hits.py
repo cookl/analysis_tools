@@ -66,7 +66,7 @@ def process_data(input_file_names, output_dir, config_dict, timing_offsets_glb_p
             #store variables from configuration dictionary in a configuration tree
             config_tree = outfile.mktree("Configuration", {
                 "git_hash": "string", #git hash of the code used 
-                "pmts_with_timing_constant_slot_pos": "var * int32", #the global pmt id (slot*100 + pos) of pmts with timing constants
+                "wcte_pmts_with_timing_constant": "var * int32", #the global pmt id (slot*100 + pos) of pmts with timing constants
                 "timing_constant_revision_id": "int32", #the revision id of the timing constant set used
                 "timing_constant_insert_time": "string", #the insert time of the timing constants in the db set used
                 "input_file_name": "string" # the file name of the input file processed
@@ -74,7 +74,7 @@ def process_data(input_file_names, output_dir, config_dict, timing_offsets_glb_p
         
             config_tree.extend({
                     "git_hash": [config_dict["git_hash"]],
-                    "pmts_with_timing_constant_slot_pos": ak.Array([config_dict["timing_offsets_glb_pmt_id"]]),
+                    "wcte_pmts_with_timing_constant": ak.Array([config_dict["timing_offsets_glb_pmt_id"]]),
                     "timing_constant_revision_id": [config_dict["timing_constant_revision_id"]],
                     "timing_constant_insert_time": [config_dict["timing_constant_insert_time"] ],
                     "input_file_name": [input_file_name]
