@@ -69,15 +69,17 @@ def process_data(input_file_names, output_dir, config_dict, timing_offsets_glb_p
                 "wcte_pmts_with_timing_constant": "var * int32", #the global pmt id (slot*100 + pos) of pmts with timing constants
                 "timing_constant_revision_id": "int32", #the revision id of the timing constant set used
                 "timing_constant_insert_time": "string", #the insert time of the timing constants in the db set used
+                "timing_constant_official_flag": "int32", #flag if the timing constants used were official
                 "input_file_name": "string" # the file name of the input file processed
             })
         
             config_tree.extend({
-                    "git_hash": [config_dict["git_hash"]],
-                    "wcte_pmts_with_timing_constant": ak.Array([config_dict["timing_offsets_glb_pmt_id"]]),
-                    "timing_constant_revision_id": [config_dict["timing_constant_revision_id"]],
-                    "timing_constant_insert_time": [config_dict["timing_constant_insert_time"] ],
-                    "input_file_name": [input_file_name]
+                "git_hash": [config_dict["git_hash"]],
+                "wcte_pmts_with_timing_constant": ak.Array([config_dict["timing_offsets_glb_pmt_id"]]),
+                "timing_constant_revision_id": [config_dict["timing_constant_revision_id"]],
+                "timing_constant_official_flag": [config_dict["timing_constant_official_flag"]],
+                "timing_constant_insert_time": [config_dict["timing_constant_insert_time"] ],
+                "input_file_name": [input_file_name]
             })
             
             batch_size = 1000
@@ -111,7 +113,6 @@ def process_data(input_file_names, output_dir, config_dict, timing_offsets_glb_p
                 #open the input file in batches
                 for start in range(0, total_entries, batch_size):  
                     stop = min(start + batch_size, total_entries)
-                    
                     # if start>=5000:
                     #     print("Stopping after 5000 events for testing")
                     #     break
@@ -228,7 +229,7 @@ if __name__ == "__main__":
     config_dict["timing_offsets_glb_pmt_id"] = timing_offsets_glb_pmt_id
     config_dict["timing_constant_revision_id"] = timing_constant_revision_id
     config_dict["timing_constant_insert_time"] = timing_constant_insert_time
-    
+    config_dict["timing_constant_official_flag"] = official
     start = time.time()
     process_data(args.input_files, args.output_dir,config_dict, timing_offsets_glb_pmt_id, timing_offsets_values)
     end = time.time()
