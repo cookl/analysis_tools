@@ -38,8 +38,8 @@ def get_git_descriptor():
             stderr=subprocess.STDOUT
         ).decode().strip()
         if status:
-            print("Repository has uncommitted changes")
-            # raise Exception("Repository has uncommitted changes")
+            # print("Repository has uncommitted changes")
+            raise Exception("Repository has uncommitted changes")
         return desc
 
     except subprocess.CalledProcessError as e:
@@ -285,9 +285,9 @@ if __name__ == "__main__":
                     calibrated_tree_entries = calibrated_file["CalibratedHits"].num_entries
                     if  readout_window_tree_entries!=calibrated_tree_entries:
                         print("Input file problem different number of entries between calibrated and original file")
-                        print("debug mode: override")
-                        readout_window_tree_entries = min(readout_window_tree_entries,calibrated_tree_entries)
-                        # raise Exception("Input file problem different number of entries between calibrated and original file")
+                        # print("debug mode: override")
+                        # readout_window_tree_entries = min(readout_window_tree_entries,calibrated_tree_entries)
+                        raise Exception("Input file problem different number of entries between calibrated and original file")
                     
                     batch_size = 10_000 #can use large batches as only a couple of branches are loaded
                     for start in range(0, readout_window_tree_entries, batch_size):  
