@@ -1,6 +1,4 @@
-## Contribution Rules
-Main branch on WCTE/analysis_tools is protected - please open a pull request (either from your own branch or fork) to push changes to main branch
-
+# Installation
 Installation:
 
 git clone <git repo location>
@@ -9,6 +7,11 @@ pip install -e .
 
 The -e flag allows you to edit the package 
 If using on lxplus you will need to setup this in a python virtual environment 
+
+## Contribution Rules
+Main branch on WCTE/analysis_tools is protected - please open a pull request (either from your own branch or fork) to push changes to main branch
+
+# Package classes and functions
 
 ##  WaveformProcessing
 
@@ -48,7 +51,35 @@ The mapping json is located in the package
 
 Class to load PMT positions, directions and calculate time of flight.
 
-## Beam monitor PID
+# Processing Scripts
+
+## production v_0
+### add_timing_constants.py
+
+The earliest version of production script for production v_0 which added timing constants to self-trigger data
+
+## production v_0_5
+### process_data_v0_5.py
+
+Self-trigger data production v 0_5 (see https://wcte.hyperk.ca/wg/simulation-and-analysis/data-production-2) 
+for self-trigger data which includes timing constants and data quality flags
+
+## production v_1
+### hardware_trigger_wf_processing_v1.py
+
+Does pulse finding and charge/time determination for hardware trigger data
+
+### calibrate_hits.py
+
+Adds timing constants to either self-trigger data or hits found during hardware trigger processing
+
+### self_trigger_dq_flags.py
+
+Adds data quality flags for self trigger runs, determining the good channel list from slow control 
+and channels with calibration constants. Adds trigger level flags for bad triggers from slow control
+and triggers effected by 67ms
+
+# Beam monitor PID
 
 This code performs the 1pe calibration of the ACT PMTs as well as the *basic* event PID based on monitor information (TOF, 
 charge deposited in ACTs, etc...). 
