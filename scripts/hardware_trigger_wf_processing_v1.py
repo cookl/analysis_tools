@@ -171,6 +171,11 @@ if __name__ == "__main__":
             batch_size = 1000
             
             with uproot.open(input_file_name) as root_file:
+                
+                if "WCTEReadoutWindows" not in root_file:
+                    print("Input file",input_file_name,"does not have WCTEReadoutWindows tree, skipping")
+                    continue
+                    
                 input_tree = root_file["WCTEReadoutWindows"]
                 total_entries = input_tree.num_entries
                 all_branches = input_tree.keys()
