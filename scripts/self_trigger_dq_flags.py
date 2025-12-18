@@ -88,17 +88,6 @@ def get_slow_control_trigger_mask(run_number_str:str, trigger_times:np.ndarray, 
     returns 
             np.ndarray of Bools the same length as trigger time. Entries with "True" should be kept; entries with "False" should be discarded
     """
-    
-    # if run_number_str not in good_run_data:
-    #     raise Exception("run_number not found",run_number_str,"in ")
-    #     return np.zeros(len(trigger_times)).astype(bool), []
-    
-    # else:
-    #     this_data = good_run_data[run_number_str]
-    
-    # very_bad = run_data["runtime"]<600
-    # if very_bad:
-    #     return np.zeros(len(trigger_times)).astype(bool), run_data["mpmts"]
 
     bad_mask = np.zeros(len(trigger_times)).astype(bool)
     bad_channel = []
@@ -150,35 +139,6 @@ def get_67ms_mask(run_number_str:str, trigger_times:np.ndarray):
         periodic_67ms_missing = np.ones(len(trigger_times))
     #these masks are 1 if no problem and 0 if issue
     return  periodic_67ms_missing
-
-# def get_good_trigger_list_slow_control(good_run_list_path:str, data_root_file:str, run_number:int):
-#     """
-#     Wrapper function for get_trigger_mask
-#     data_root_file - path to the WCTEReadoutWindows root file for the run
-#     run_number - the run number integer
-#     returns a length-2 tuple
-#             np.ndarray of Bools the same length as trigger time. Entries with "True" should be kept; entries with "False" should be discarded
-#             np.ndarray of Bools the same length as trigger time. Entries with "True" have no periodic 67ms issue; entries with "False" have the issue
-#     """
-    
-#     with open(good_run_list_path, 'r') as f:
-#         good_run_data = json.load(f)
-
-#     BUFFER = 15 
-    
-#     with uproot.open(data_root_file) as file:
-#         tree = file["WCTEReadoutWindows"]
-#         trigger_times = tree["window_time"].array()
-    
-#     good_trigger_mask, _ = get_trigger_mask(str(run_number),trigger_times,good_run_data)
-#     #for now only consider pre-hardware trigger installation runs
-#     if int(run_number)<1841:
-#         periodic_67ms_missing = trigger_times%67108864>1e7
-#     else:
-#         periodic_67ms_missing = np.ones(len(trigger_times))
-#     #these masks are 1 if no problem and 0 if issue
-#     return good_trigger_mask, periodic_67ms_missing
-
      
 if __name__ == "__main__":
     
