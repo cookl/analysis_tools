@@ -90,7 +90,8 @@ def get_slow_control_trigger_mask(run_number_str:str, trigger_times:np.ndarray, 
     returns 
             np.ndarray of Bools the same length as trigger time. Entries with "True" should be kept; entries with "False" should be discarded
     """
-
+    BUFFER = 15 
+    
     bad_mask = np.zeros(len(trigger_times)).astype(bool)
     bad_channel = []
     for problem in run_data["problems"]:
