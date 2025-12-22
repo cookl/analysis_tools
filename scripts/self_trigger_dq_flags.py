@@ -13,16 +13,8 @@ from analysis_tools import CalibrationDBInterface
 from analysis_tools import PMTMapping
 from enum import Flag, auto
 import subprocess
+from data_quality_flags import HitMask, TriggerMask
 
-class HitMask(Flag):
-    STABLE_CHANNEL = 0    
-    NO_TIMING_CONSTANT = 1 
-    SLOW_CONTROL_EXCLUDED = 2 
-
-class TriggerMask(Flag):
-    STABLE_TRIGGER = 0    
-    PERIODIC_67_ISSUE = 1 
-    SLOW_CONTROL_EXCLUDED = 2 
 
 def get_git_descriptor():
     try:
@@ -159,6 +151,10 @@ if __name__ == "__main__":
     #make a list of calibrated input files - these are needed to determine for the channel list
     #of channels with calibration constants and for the hit list for which the mask is to be applied
     calibrated_input_files = []
+    run_total_triggers = 0
+    run_total_bad_triggers = 0
+    run_total_hits = 0
+    run_total_bad_hits = 0
     for input_file in args.input_files:
         base = os.path.splitext(os.path.basename(input_file))[0]
         calibrated_file_name = f"{base}_calibrated_hits.root" 
@@ -218,7 +214,9 @@ if __name__ == "__main__":
                         "run_configuration": "string",
                         "good_wcte_pmts": "var * int32", #the global pmt id (slot*100 + pos) of good pmts with timing constants and stable in slow control
                         "wcte_pmts_with_timing_constant": "var * int32", #the global pmt id (slot*100 + pos) of pmts with timing constants
-                        "wcte_pmts_slow_control_stable": "var * int32", #the revision id of the timing constant set used
+                        "wcte_pmts_slow_control_stable": "var * int32", #the global pmt id (slot*100 + pos) of pmts stable in slow control
+                        "readout_window_file": "string",
+                        "calibrated_hit_file": "string"
                     })
                     print("There were",len(stable_channels_card_chan),"enabled channels not masked out")
                     print("There were",len(pmts_with_timing_constant),"channels with timing constants")
@@ -230,12 +228,14 @@ if __name__ == "__main__":
                         "run_configuration": [run_configuration],
                         "good_wcte_pmts": ak.Array([list(set(pmts_with_timing_constant) & set(slow_control_stable_channels))]), 
                         "wcte_pmts_with_timing_constant": ak.Array([pmts_with_timing_constant]),
-                        "wcte_pmts_slow_control_stable": ak.Array([slow_control_stable_channels])
+                        "wcte_pmts_slow_control_stable": ak.Array([slow_control_stable_channels]),
+                        "readout_window_file": [readout_window_file_name],
+                        "calibrated_hit_file": [calibrated_input_file_name]
                     })
                     
                     # Create a TTree to store the flags
                     tree = outfile.mktree("DataQualityFlags", { #only WCTE detector hits are stored here (not trigger mainboard hits)
-                        "hit_pmt_hit_pmt_readout_mask": "var * int32",
+                        "hit_pmt_readout_mask": "var * int32",
                         "window_data_quality_mask": "int32",
                         "readout_number": "int32" #the unique readout window number for this event in the run
                     })
@@ -287,10 +287,18 @@ if __name__ == "__main__":
                         
                         #append to tree
                         tree.extend({
-                            "hit_pmt_hit_pmt_readout_mask": hit_mask,
+                            "hit_pmt_readout_mask": hit_mask,
                             "window_data_quality_mask": trigger_mask,
                             "readout_number": readout_window_events["readout_number"].to_numpy()
                         })
-                        
+                        run_total_triggers += len(trigger_mask)
+                        run_total_bad_triggers +=np.sum(trigger_mask!=0)
+                        run_total_hits += len(hit_mask_flat)
+                        run_total_bad_hits +=np.sum(hit_mask_flat!=0)
                         print("Batch processed",np.sum(trigger_mask==0),"/",len(trigger_mask),"good triggers", f"{np.sum(trigger_mask==0)/len(trigger_mask):.2%}")
                         print("Processed",np.sum(hit_mask_flat==0),"/",len(hit_mask_flat),"good hits", f"{np.sum(hit_mask_flat==0)/len(hit_mask_flat):.2%}")
+    
+    print("Finished processing run",args.run_number,"across",len(args.input_files),"files")
+    print("In total processed",run_total_triggers,"triggers with",run_total_bad_triggers,"bad triggers", f"{run_total_bad_triggers/run_total_triggers:.2%}")
+    print("In total processed",run_total_hits,"hits with",run_total_bad_hits," bad hits", f"{run_total_bad_hits/run_total_hits:.2%}")
+    
