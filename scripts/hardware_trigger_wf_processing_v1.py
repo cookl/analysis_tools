@@ -12,7 +12,7 @@ import argparse
 import os
 import subprocess
 
-def get_git_descriptor():
+def get_git_descriptor(debug=False):
     try:
         # Get commit hash / tag
         desc = subprocess.check_output(
@@ -26,7 +26,10 @@ def get_git_descriptor():
             stderr=subprocess.STDOUT
         ).decode().strip()
         if status:
-            raise Exception("Repository has uncommitted changes")
+            if debug:
+                print("Warning: Repository has uncommitted changes, but continuing due to debug mode.")
+            else:
+                raise Exception("Repository has uncommitted changes")
 
         return desc
 
@@ -125,13 +128,15 @@ def determine_short_waveform_list(wf_waveforms,wf_card,wf_chan):
     return np.array(short_waveform_list)
 
 if __name__ == "__main__":
-    
-    git_hash = get_git_descriptor()
-    
+        
     parser = argparse.ArgumentParser(description="Add a new branch to a ROOT TTree in batches.")
     parser.add_argument("-i","--input_files",nargs='+', help="Path to input ROOT file or files")
     # parser.add_argument("-r","--run_number", help="Run Number")
     parser.add_argument("-o","--output_dir", help="Directory to write output file")
+    parser.add_argument("--debug", action="store_true",help="Enable debug - disables checks allowing for test runs")
+    
+    git_hash = get_git_descriptor(debug = args.debug)
+
     args = parser.parse_args()
 
     for input_file_name in args.input_files:
@@ -203,10 +208,10 @@ if __name__ == "__main__":
                 #open the input file in batches
                 for start in range(0, total_entries, batch_size):  
                     stop = min(start + batch_size, total_entries)
-                    
-                    # if start>=5000:
-                    #     print("Stopping after 5000 events for testing")
-                    #     break
+                    if args.debug:
+                        if start>=5000:
+                            print("Stopping after 5000 events for testing")
+                            break
                     print(f"Loading entries {start} → {stop}")
                     start_batch = time.time()
                     #open the events in a batch
@@ -336,4 +341,4 @@ if __name__ == "__main__":
                     end_batch = time.time()
                     print(f"Time for full batch: {end_batch - start_batch:.6f} seconds")
 
-        
+    print("*** Script complete ***")
