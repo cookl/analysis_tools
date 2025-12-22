@@ -15,7 +15,7 @@ from analysis_tools import PMTMapping
 from enum import Flag, auto
 import subprocess
 
-def get_git_descriptor():
+def get_git_descriptor(debug=False):
     try:
         # Get commit hash / tag
         desc = subprocess.check_output(
@@ -29,13 +29,16 @@ def get_git_descriptor():
             stderr=subprocess.STDOUT
         ).decode().strip()
         if status:
-            raise Exception("Repository has uncommitted changes")
+            if debug:
+                print("Warning: Repository has uncommitted changes, but continuing due to debug mode.")
+            else:
+                raise Exception("Repository has uncommitted changes")
         return desc
 
     except subprocess.CalledProcessError as e:
         raise RuntimeError("Git command failed") from e
        
-def process_data(input_file_names, output_dir, config_dict, timing_offsets_glb_pmt_id, timing_offsets_values):
+def process_data(input_file_names, output_dir, config_dict, timing_offsets_glb_pmt_id, timing_offsets_values, debug=False):
         
     timing_offset_lookup = np.zeros(max(timing_offsets_glb_pmt_id)+1, dtype=np.float64)
     timing_offset_lookup[timing_offsets_glb_pmt_id] = timing_offsets_values
@@ -113,9 +116,9 @@ def process_data(input_file_names, output_dir, config_dict, timing_offsets_glb_p
                 #open the input file in batches
                 for start in range(0, total_entries, batch_size):  
                     stop = min(start + batch_size, total_entries)
-                    # if start>=5000:
-                    #     print("Stopping after 5000 events for testing")
-                    #     break
+                    if args.debug and start>=5000:
+                        print("Stopping after 5000 events for testing")
+                        break
                     print(f"Loading entries {start} → {stop}")
                     start_batch = time.time()
 
@@ -202,6 +205,7 @@ if __name__ == "__main__":
     parser.add_argument("-o","--output_dir",required=True, help="Directory to write output file")
     # parser = argparse.ArgumentParser()
     parser.add_argument("--not_official_const", action="store_true",help="Flag to set official = false in const lookup")
+    parser.add_argument("--debug", action="store_true",help="Enable debug - disables checks allowing for test runs")
     args = parser.parse_args()
     
     #check that the run number is correct 
@@ -211,7 +215,7 @@ if __name__ == "__main__":
     
     #get the git hash of the repo
     config_dict = {}
-    git_hash = get_git_descriptor()
+    git_hash = get_git_descriptor(debug=args.debug)
     config_dict["git_hash"] = git_hash
     
     #get calibration constants
@@ -231,6 +235,6 @@ if __name__ == "__main__":
     config_dict["timing_constant_insert_time"] = timing_constant_insert_time
     config_dict["timing_constant_official_flag"] = official
     start = time.time()
-    process_data(args.input_files, args.output_dir,config_dict, timing_offsets_glb_pmt_id, timing_offsets_values)
+    process_data(args.input_files, args.output_dir,config_dict, timing_offsets_glb_pmt_id, timing_offsets_values, debug=args.debug)
     end = time.time()
     print(f"Process all data time: {end - start:.3f} seconds")

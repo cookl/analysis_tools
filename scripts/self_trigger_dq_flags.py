@@ -14,9 +14,9 @@ from analysis_tools import PMTMapping
 from enum import Flag, auto
 import subprocess
 from data_quality_flags import HitMask, TriggerMask
+import hashlib
 
-
-def get_git_descriptor():
+def get_git_descriptor(debug=False):
     try:
         # Get commit hash / tag
         desc = subprocess.check_output(
@@ -30,12 +30,22 @@ def get_git_descriptor():
             stderr=subprocess.STDOUT
         ).decode().strip()
         if status:
-            # print("Repository has uncommitted changes")
-            raise Exception("Repository has uncommitted changes")
+            if debug:
+                print("Warning: Repository has uncommitted changes, but continuing due to debug mode.")
+            else:
+                raise Exception("Repository has uncommitted changes")
         return desc
 
     except subprocess.CalledProcessError as e:
         raise RuntimeError("Git command failed") from e
+
+def file_sha256(path, chunk_size=1024 * 1024):
+    #get the hash of a file, used to identify input slow control file used
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 def get_run_database_data(json_path,run_number):
 
@@ -44,7 +54,7 @@ def get_run_database_data(json_path,run_number):
 
     run_key = str(run_number)
     if run_key not in data:
-        raise ValueError(f"Run number {run_number} not found in the JSON data.")
+        raise ValueError(f"Run number {run_number} not found in the run list data.")
     return data[run_key]    
        
 def get_stable_mpmt_list_slow_control(run_data:dict,run_number:int):
@@ -134,14 +144,15 @@ def get_67ms_mask(run_number_str:str, trigger_times:np.ndarray):
      
 if __name__ == "__main__":
     
-    git_hash = get_git_descriptor()
-
     parser = argparse.ArgumentParser(description="Add a new branch to a ROOT TTree in batches.")
     parser.add_argument("-i","--input_files",required=True, nargs='+', help="Path to WCTEReadoutWindows ROOT file")
     parser.add_argument("-c","--input_calibrated_file_directory",required=True, help="Path to WCTEReadoutWindows ROOT file")
     parser.add_argument("-r","--run_number",required=True, help="Run Number")
     parser.add_argument("-o","--output_dir",required=True, help="Directory to write output file")
+    parser.add_argument("--debug", action="store_true",help="Enable debug - disables checks allowing for test runs")
     args = parser.parse_args()
+    
+    git_hash = get_git_descriptor(debug=args.debug)
     
     #check that the run number is correct 
     for input_file in args.input_files:
@@ -165,6 +176,11 @@ if __name__ == "__main__":
     
     #slow control file for good run list
     good_run_list_path = '/eos/experiment/wcte/configuration/slow_control_summary/good_run_list_v2.json' 
+    
+    #get hash of slow control file used
+    full_hash = file_sha256(good_run_list_path)
+    short_hash = full_hash[:10]   # e.g. first 8–12 chars
+
     #get run configuration from slow control
     run_data = get_run_database_data(good_run_list_path,args.run_number)
     run_configuration = run_data["trigger_name"]
@@ -215,12 +231,13 @@ if __name__ == "__main__":
                         "good_wcte_pmts": "var * int32", #the global pmt id (slot*100 + pos) of good pmts with timing constants and stable in slow control
                         "wcte_pmts_with_timing_constant": "var * int32", #the global pmt id (slot*100 + pos) of pmts with timing constants
                         "wcte_pmts_slow_control_stable": "var * int32", #the global pmt id (slot*100 + pos) of pmts stable in slow control
+                        "slow_control_file_name": "string",
+                        "slow_control_file_hash": "string",
                         "readout_window_file": "string",
                         "calibrated_hit_file": "string"
                     })
                     print("There were",len(stable_channels_card_chan),"enabled channels not masked out")
                     print("There were",len(pmts_with_timing_constant),"channels with timing constants")
-                    # print((set(pmts_with_timing_constant)- slow_control_stable_channels_set),"channels have timing constants but not stable in slow control")
                     print("In total there are",len(set(pmts_with_timing_constant) & set(slow_control_stable_channels)),"good channels with timing constants and stable in slow control")
                     
                     config_tree.extend({
@@ -229,6 +246,8 @@ if __name__ == "__main__":
                         "good_wcte_pmts": ak.Array([list(set(pmts_with_timing_constant) & set(slow_control_stable_channels))]), 
                         "wcte_pmts_with_timing_constant": ak.Array([pmts_with_timing_constant]),
                         "wcte_pmts_slow_control_stable": ak.Array([slow_control_stable_channels]),
+                        "slow_control_file_name": [good_run_list_path],
+                        "slow_control_file_hash": [short_hash],
                         "readout_window_file": [readout_window_file_name],
                         "calibrated_hit_file": [calibrated_input_file_name]
                     })
@@ -244,10 +263,13 @@ if __name__ == "__main__":
                     readout_window_tree_entries = readout_window_file["WCTEReadoutWindows"].num_entries 
                     calibrated_tree_entries = calibrated_file["CalibratedHits"].num_entries
                     if  readout_window_tree_entries!=calibrated_tree_entries:
-                        print("Input file problem different number of entries between calibrated and original file")
-                        # print("debug mode: override")
-                        # readout_window_tree_entries = min(readout_window_tree_entries,calibrated_tree_entries)
-                        raise Exception("Input file problem different number of entries between calibrated and original file")
+                        if args.debug:
+                            print("Warning: Input file problem different number of entries between calibrated and original file, but continuing due to debug mode.")
+                            print("debug mode: override")
+                            readout_window_tree_entries = min(readout_window_tree_entries,calibrated_tree_entries)
+                        else:
+                            raise Exception("Input file problem different number of entries between calibrated and original file")
+                        
                     
                     batch_size = 10_000 #can use large batches as only a couple of branches are loaded
                     for start in range(0, readout_window_tree_entries, batch_size):  
