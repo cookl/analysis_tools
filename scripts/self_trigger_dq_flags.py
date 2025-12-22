@@ -176,7 +176,7 @@ if __name__ == "__main__":
             raise Exception(f"Calibrated input file {calibrated_input_file} does not exist")
     
     #slow control file for good run list
-    good_run_list_path = '/eos/experiment/wcte/configuration/slow_control_summary/good_run_list_v2.json' 
+    good_run_list_path = '/eos/experiment/wcte/configuration/slow_control_summary/all_run_list.json' 
     
     #get hash of slow control file used
     full_hash = file_sha256(good_run_list_path)
