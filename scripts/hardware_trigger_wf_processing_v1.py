@@ -165,7 +165,8 @@ if __name__ == "__main__":
             config_tree = outfile.mktree("Configuration", {
                 "bad_channel_mask_card_chan": "var * int32",
                 "assumed_waveform_length": "int32",
-                "git_hash": "string"
+                "git_hash": "string",
+                "readout_window_file": "string"
             })
             
             batch_size = 1000
@@ -195,7 +196,8 @@ if __name__ == "__main__":
                 config_tree.extend({
                     "bad_channel_mask_card_chan": ak.Array([short_waveform_list]),
                     "assumed_waveform_length": [64],
-                    "git_hash": [git_hash]
+                    "git_hash": [git_hash],
+                    "readout_window_file": [input_file_name]
                 })
                 
                 #open the input file in batches
