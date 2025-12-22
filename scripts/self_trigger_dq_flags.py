@@ -324,3 +324,4 @@ if __name__ == "__main__":
     print("In total processed",run_total_triggers,"triggers with",run_total_bad_triggers,"bad triggers", f"{run_total_bad_triggers/run_total_triggers:.2%}")
     print("In total processed",run_total_hits,"hits with",run_total_bad_hits," bad hits", f"{run_total_bad_hits/run_total_hits:.2%}")
     
+    print("*** Script complete ***")

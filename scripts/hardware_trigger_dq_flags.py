@@ -334,7 +334,8 @@ if __name__ == "__main__":
                             print("Batch processed",np.sum(trigger_mask==0),"/",len(trigger_mask),"good triggers", f"{np.sum(trigger_mask==0)/len(trigger_mask):.2%}")
                             print("Processed",np.sum(hit_mask_flat==0),"/",len(hit_mask_flat),"good hits", f"{np.sum(hit_mask_flat==0)/len(hit_mask_flat):.2%}")
     
-    print("Finished processing run",args.run_number,"across",len(args.input_files),"files")
     print("Run",args.run_number,"has",len(good_wcte_pmts),"good WCTE PMTs")
     print("In total processed",run_total_triggers,"triggers with",run_total_bad_triggers,"bad triggers", f"{run_total_bad_triggers/run_total_triggers:.2%}")
     print("In total processed",run_total_hits,"hits with",run_total_bad_hits," bad hits", f"{run_total_bad_hits/run_total_hits:.2%}")
+    print("Finished processing run",args.run_number,"across",len(args.input_files),"files")
+    print("*** Script complete ***")
