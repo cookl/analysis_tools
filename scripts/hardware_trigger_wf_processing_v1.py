@@ -121,11 +121,11 @@ def do_hit_processing(waveforms, waveform_times, waveform_cards, waveform_channe
 
     return found_hit_charge, found_hit_time, found_hit_card, found_hit_chan, hit_wf_index, hit_indices_flat 
 
-def determine_short_waveform_list(wf_waveforms,wf_card,wf_chan):
-    wf_length_filter = ak.num(wf_waveforms,axis=1) < 64
-    global_channel_number = wf_card*100 + wf_chan 
-    short_waveform_list = global_channel_number[wf_length_filter]
-    return np.array(short_waveform_list)
+# def determine_short_waveform_list(wf_waveforms,wf_card,wf_chan):
+#     wf_length_filter = ak.num(wf_waveforms,axis=1) < 64
+#     global_channel_number = wf_card*100 + wf_chan 
+#     short_waveform_list = global_channel_number[wf_length_filter]
+#     return np.array(short_waveform_list)
 
 if __name__ == "__main__":
         
@@ -165,11 +165,11 @@ if __name__ == "__main__":
                 "hit_peak_sample": "var * int32",
                 "readout_number": "int32",
                 "trigger_time": "float64",
-                "missing_trigger_flag": "int32"
+                "missing_trigger_flag": "int32",
+                "event_bad_waveform_lengths_flag":"int32"
             })
             
             config_tree = outfile.mktree("Configuration", {
-                "bad_channel_mask_card_chan": "var * int32",
                 "assumed_waveform_length": "int32",
                 "git_hash": "string",
                 "readout_window_file": "string"
@@ -187,20 +187,7 @@ if __name__ == "__main__":
                 total_entries = input_tree.num_entries
                 all_branches = input_tree.keys()
                 
-                #open the first entry to determine if any short waveforms are present
-                #assumes waveform length should be 64 samples
-                first_event = input_tree.arrays(all_branches,library="ak", entry_start=0, entry_stop=1)
-                wf_waveforms = first_event["pmt_waveforms"][0]
-                wf_card = first_event["pmt_waveform_mpmt_card_ids"][0]
-                wf_chan = first_event["pmt_waveform_pmt_channel_ids"][0]
-                short_waveform_list = determine_short_waveform_list(wf_waveforms,wf_card,wf_chan)
-                
-                if len(short_waveform_list)>0:
-                    print("Warning: Found short waveforms in first event on channels:",short_waveform_list)
-                    print("These waveforms will likely cause problems in processing")
-                
                 config_tree.extend({
-                    "bad_channel_mask_card_chan": ak.Array([short_waveform_list]),
                     "assumed_waveform_length": [64],
                     "git_hash": [git_hash],
                     "readout_window_file": [input_file_name]
@@ -229,7 +216,8 @@ if __name__ == "__main__":
                     batch_hit_waveform_index = []
                     batch_hit_peak_sample = []
                     batch_event_readout_number = [] 
-                    batch_event_trigger_time = [] 
+                    batch_event_trigger_time = []
+                    batch_event_event_bad_waveform_lengths_flag = [] 
             
                     for iev, event in enumerate(events):
                         if iev%100==0:
@@ -244,12 +232,24 @@ if __name__ == "__main__":
                         wf_pmt_pos    = event["pmt_waveform_pmt_position_ids"]
                         event_readout_number = event["readout_number"]
                         
-                        if len(short_waveform_list)>0:
-                            global_channel_number = wf_card*100 + wf_chan 
-                            waveform_filter = ~np.isin(global_channel_number,short_waveform_list)
+                        # if len(short_waveform_list)>0:
+                        #     global_channel_number = wf_card*100 + wf_chan 
+                        #     waveform_filter = ~np.isin(global_channel_number,short_waveform_list)
+                        # else:
+                        #     #don't filter any waveforms
+                        #     waveform_filter = np.ones_like(wf_card,dtype=bool)
+                        
+                        ##if any waveform lengths !=64 then mask that trigger 
+                        event_bad_waveform_lengths_flag = 0 
+                        wf_lengths = ak.num(wf_waveforms).to_numpy()
+                        if np.any(wf_lengths != 64):
+                            print("Found waveform with length != 64 samples on iev", start+iev)
+                            waveform_filter = wf_lengths == 64
+                            event_bad_waveform_lengths_flag = 1
                         else:
-                            #don't filter any waveforms
-                            waveform_filter = np.ones_like(wf_card,dtype=bool)
+                            waveform_filter = np.full(wf_lengths.shape, True)
+                         
+        
                         try:
                             wf_process = np.array(wf_waveforms[waveform_filter])
                         except:
@@ -275,11 +275,13 @@ if __name__ == "__main__":
                             print("No hits for event",iev)
                         found_hit_mpmt_slot = wf_process_mpmt_slot[hit_wf_index]
                         found_hit_pmt_pos = wf_process_pmt_pos[hit_wf_index]
-                        if len(short_waveform_list)>0:
+                        
+                        if event_bad_waveform_lengths_flag:
                             #hit_wf_index corresponds to the filtered waveform array, want to map back to
                             #the original waveform array
                             unfiltered_wf_idx = np.nonzero(waveform_filter)[0][hit_wf_index]
                             hit_wf_index = unfiltered_wf_idx
+                        
                         hit_wf_index = np.array(hit_wf_index)
                         end = time.time()
                         if iev==234: print(f"Estimated hit processing: {batch_size*(end - start):.6f} seconds")
@@ -289,12 +291,14 @@ if __name__ == "__main__":
                         batch_hit_charge.append(found_hit_charge.tolist())
                         batch_hit_card.append(found_hit_card.tolist())
                         batch_hit_chan.append(found_hit_chan.tolist())
-                        
                         batch_hit_waveform_index.append(hit_wf_index.tolist())
                         batch_hit_peak_sample.append(hit_local_indices.tolist())
                         batch_event_readout_number.append(int(event_readout_number))
                         batch_hit_slot.append(found_hit_mpmt_slot.tolist())
                         batch_hit_pmt_pos.append(found_hit_pmt_pos.tolist())
+                        
+                        batch_event_event_bad_waveform_lengths_flag.append(event_bad_waveform_lengths_flag)
+
                         end = time.time()
                         if iev==234: print(f"Time append processing: {1000.0*(end - start):.6f} seconds")
                     #finished processing batch
@@ -321,6 +325,7 @@ if __name__ == "__main__":
                     batch_hit_time = batch_hit_time - batch_event_trigger_time
                     batch_event_trigger_time = batch_event_trigger_time.to_numpy()
                     
+                    batch_event_event_bad_waveform_lengths_flag = np.array(batch_event_event_bad_waveform_lengths_flag)
                     
                     mid_time = time.time()
                     tree.extend({
@@ -334,7 +339,8 @@ if __name__ == "__main__":
                         "hit_peak_sample": (batch_hit_peak_sample),
                         "readout_number": batch_event_readout_number,
                         "trigger_time": batch_event_trigger_time,
-                        "missing_trigger_flag": missing_trigger_flag
+                        "missing_trigger_flag": missing_trigger_flag,
+                        "event_bad_waveform_lengths_flag": batch_event_event_bad_waveform_lengths_flag
                     })
                     end = time.time()
                     print(f"Time ak.Array: {mid_time - start:.6f} seconds")
