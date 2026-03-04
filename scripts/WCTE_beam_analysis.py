@@ -26,10 +26,7 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--run",
-        dest="run_number",
-        type=int,
-        required=True,
+        "-r", "--run_number", required=True, type=int,
         help="Run number to analyse"
     )
     parser.add_argument(
@@ -48,7 +45,8 @@ def parse_args():
     return parser.parse_args()
 
 
-#Step 0: read from the json file which run you want and its properties
+#Step 0: read  from the json file which run you want and its properties
+
 args = parse_args()
 
 run_info = ReadBeamRunInfo()
@@ -63,6 +61,7 @@ if args.debug and n_events == -1:
     print(f"Debug mode: limiting to {DEBUG_N_EVENTS} events")
     n_events = DEBUG_N_EVENTS
 
+#output_filename
 os.makedirs(args.output_dir, exist_ok=True)
 
 for input_file in args.input_files:
@@ -90,6 +89,8 @@ for input_file in args.input_files:
     #Step 3: proton and heavier particle tagging with T0-T1 TOF
     #We need to tag protons before any other particles to avoid double-counting
     ana.tag_protons_TOF()
+#TODO: identify protons that produce knock-on electrons
+
 
     #Step 4: tag electrons using ACT0-2 finding the minimum in the cut line
     ana.tag_electrons_ACT02()
@@ -97,19 +98,25 @@ for input_file in args.input_files:
     #Step 5: check visually that the electron and proton removal makes sense in ACT35
     ana.plot_ACT35_left_vs_right()
 
-    #Step 6: muon/pion separation using the muon tagger where necessary
+    #Step 6: make the muon/pion separation, using the muon tagger in case 
+    #at least 0.5% of muons and pions are above the cut line (at hiogh momentum). This is necessary in case the 
+    #Number of particles is too high to clearly see a minimum between the muons and pions
     ana.tag_muons_pions_ACT35()
 
-    #Correct any TOF offset (e.g. from cable length)
+    #This corrects any offset in the TOF (e.g. from cable length) that can cause the TOF 
+    #of electrons to be different from L/c This has to be calibrated to give meaningful momentum 
+    #estimates later on
     ana.measure_particle_TOF()
 
-    #Estimate mean momentum per particle type and per trigger
+    #This function extimates both the mean momentum for each particle type and for each trigger
+    #We take the the error on the tof for each trigger is the resolution of the TS0-TS1 measurement
+    #Taken as the std of the gaussian fit to the electron TOF
     ana.estimate_particle_momentum()
 
-    #Estimate number of events per POT
+    #estimate the number of events per POT
     ana.plot_number_particles_per_POT()
 
-    #Cleanly close files
+    #Step X: end_analysis, necessary to cleanly close files 
     ana.end_analysis()
 
     #Output to a root file
