@@ -67,10 +67,45 @@ for self-trigger data which includes timing constants and data quality flags
 ## production v_1
 
 Production v_1 processes both self-trigger and hardware-trigger data through a multi-step pipeline.
-Each pipeline is orchestrated by a runner script that calls the intermediate scripts in sequence.
-Intermediate outputs are written to step-specific subdirectories under `<output_base>/<run_number>/`.
+A top-level orchestrator script (`run_pipeline.py`) reads run metadata from the run info JSON,
+determines the trigger type and beam analysis mode automatically, and calls the appropriate
+pipeline scripts. Intermediate outputs are written to step-specific subdirectories under
+`<output_base>/<run_number>/`.
+
+### Top-level orchestrator
+
+#### `run_pipeline.py`
+
+The recommended entry point for production. For a given run it:
+1. Reads trigger type and beam analysis mode from the run info JSON via `get_run_info()`.
+2. Runs the appropriate trigger-specific pipeline (`run_hw_trigger_pipeline.py` or `run_self_trigger_pipeline.py`).
+3. Conditionally runs beam monitor PID analysis (`WCTE_beam_analysis.py`) depending on the beam configuration.
+
+The input files are not passed directly — they are resolved from the run number.
+
+Usage:
+```bash
+python run_pipeline.py \
+  -r <run_number> \
+  -i <input_file(s)> \
+  -o <output_base_dir> \
+  [--steps wf calibrate dq beam] \
+  [--debug]
+```
+
+**`--steps`** controls which parts of the pipeline run. If not provided all steps run by default.
+If `wf` or `calibrate` is specified, the corresponding downstream steps are also re-run
+(e.g. `--steps calibrate` also runs `dq`).
+
+#### Beam analysis mode
+
+The decision to run VME beam processing is determined automatically from the run info JSON.
+If the run is in a tagged gamma configuration or downstream ACTs (act3–5) are missing,
+the VME processing will not run.
 
 ### Pipeline runner scripts
+
+These can also be run standalone (e.g. to reprocess a single step).
 
 #### `run_self_trigger_pipeline.py`
 
@@ -84,7 +119,7 @@ Step 2 (dq)        : self_trigger_dq_flags.py → dq_flags/
 Usage:
 ```bash
 python run_self_trigger_pipeline.py \
-  -i <input_file(s)> -r <run_number> -o <output_base_dir> [--debug]
+  -i <input_file(s)> -r <run_number> -o <output_base_dir> [--steps calibrate dq] [--debug]
 ```
 
 #### `run_hw_trigger_pipeline.py`
@@ -100,11 +135,11 @@ Step 3 (dq)        : hw_trigger_dq_flags.py       → dq_flags/
 Usage:
 ```bash
 python run_hw_trigger_pipeline.py \
-  -i <input_file(s)> -r <run_number> -o <output_base_dir> [--debug]
+  -i <input_file(s)> -r <run_number> -o <output_base_dir> [--steps wf calibrate dq] [--debug]
 ```
 
-Both pipeline scripts support `--from-step <step>` to skip completed earlier steps and reuse
-their outputs, e.g. `--from-step dq` reprocesses only the DQ flags stage.
+Both pipeline scripts support `--steps` (see above). The dependency expansion is applied
+automatically — requesting `calibrate` will also run `dq`.
 
 ### Intermediate scripts
 
@@ -143,7 +178,8 @@ applies trigger-level flags for missing waveforms, missing trigger signals, and 
   dq_flags/
     <base>_[self|hw]_trigger_dq_flags.root
     <base>_[self|hw]_trigger_dq_flags_status.json
-  merged/                (reserved for future merge step)
+  beam_data/             (normal beam runs only)
+    beam_analysis_output_R<run_number>.root
 ```
 
 ### Status sidecar files
@@ -168,18 +204,19 @@ Each DQ script writes a `_status.json` file alongside the output ROOT file conta
 ```
 
 The pipeline runners read these sidecars after the DQ step and print a `QC WARNING` if configurable
-thresholds (defined at the top of each pipeline runner) are exceeded. Files with warnings should
-not be included in the merge step without manual review.
+thresholds (defined at the top of each pipeline runner) are exceeded.
 
 ### Shared utilities
 
 Common functions used across all production scripts are in `analysis_tools/production_utils.py`:
+- `get_run_info` — reads trigger type and beam analysis mode from the run info JSON
 - `get_git_descriptor` — git provenance for output Configuration trees
 - `file_sha256` — hash of the slow-control input file used
 - `get_run_database_data`, `get_stable_mpmt_list_slow_control` — slow-control data access
 - `get_slow_control_trigger_mask`, `get_67ms_mask` — trigger-level DQ masks
 - `slot_pos_from_card_chan_list` — PMT channel mapping
 - `write_status_json`, `read_status_json` — status sidecar I/O
+
 
 
 # Beam monitor PID
