@@ -180,3 +180,29 @@ class CalibrationDBInterface:
             end_run_number=int(run_number),
             official=official,
         )
+
+    def get_bad_pmts(self, run_number):
+        """Query the database for manually-identified bad PMTs for a given run.
+
+        Returns the list of global PMT IDs (slot*100 + position) that have been
+        stored in the database as 'pmt_state' = OFFLINE for this run.
+
+        Parameters
+        ----------
+        run_number : int or str
+
+        Returns
+        -------
+        np.ndarray of int
+            Global PMT IDs of bad PMTs. Empty array if none are stored.
+        """
+        import numpy as np
+        try:
+            pmt_state_data, _, _ = self.get_calibration_constants(
+                run_number=int(run_number), time=0,
+                calibration_name="pmt_state", official=1
+            )
+            return np.array([entry["glb_pmt_id"] for entry in pmt_state_data
+                             if entry.get("pmt_status_id") == 2], dtype=int)  # 2 = OFFLINE
+        except Exception:
+            return np.array([], dtype=int)

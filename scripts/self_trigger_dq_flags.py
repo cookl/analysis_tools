@@ -15,6 +15,7 @@ from analysis_tools.production_utils import (
     slot_pos_from_card_chan_list,
     write_status_json,
 )
+from analysis_tools import CalibrationDBInterface
 
 SLOW_CONTROL_GOOD_RUN_LIST_PATH = '/eos/experiment/wcte/configuration/slow_control_summary/all_run_list.json'
 
@@ -71,6 +72,11 @@ if __name__ == "__main__":
     stable_channels_card_chan = enabled_channels - channel_mask
     #map slow control channel list in card and channel to the mpmt slot and position
     slow_control_stable_channels = slot_pos_from_card_chan_list(stable_channels_card_chan)
+
+    # query calibration database for manually-masked PMTs for this run
+    caldb = CalibrationDBInterface()
+    manually_masked_pmts = caldb.get_bad_pmts(args.run_number)
+    print(f"Found {len(manually_masked_pmts)} manually masked PMTs in calibration DB for run {args.run_number}")
     
     #loop over each file    
     first_file_pmts_with_timing_constant = None
@@ -101,9 +107,10 @@ if __name__ == "__main__":
                     config_tree = outfile.mktree("Configuration", {
                         "git_hash": "string",
                         "run_configuration": "string",
-                        "good_wcte_pmts": "var * int32", #the global pmt id (slot*100 + pos) of good pmts with timing constants and stable in slow control
-                        "wcte_pmts_with_timing_constant": "var * int32", #the global pmt id (slot*100 + pos) of pmts with timing constants
-                        "wcte_pmts_slow_control_stable": "var * int32", #the global pmt id (slot*100 + pos) of pmts stable in slow control
+                        "good_wcte_pmts": "var * int32",
+                        "wcte_pmts_with_timing_constant": "var * int32",
+                        "wcte_pmts_slow_control_stable": "var * int32",
+                        "manually_masked_pmts": "var * int32",
                         "slow_control_file_name": "string",
                         "slow_control_file_hash": "string",
                         "readout_window_file": "string",
@@ -111,15 +118,16 @@ if __name__ == "__main__":
                     })
                     print("There were",len(stable_channels_card_chan),"enabled channels not masked out")
                     print("There were",len(pmts_with_timing_constant),"channels with timing constants")
-                    good_wcte_pmts = set(pmts_with_timing_constant) & set(slow_control_stable_channels)
+                    good_wcte_pmts = set(pmts_with_timing_constant) & set(slow_control_stable_channels) - set(manually_masked_pmts)
                     print("In total there are",len(good_wcte_pmts),"good channels with timing constants and stable in slow control")
                     
                     config_tree.extend({
                         "git_hash": [git_hash],
                         "run_configuration": [run_configuration],
-                        "good_wcte_pmts": ak.Array([list(good_wcte_pmts)]), 
+                        "good_wcte_pmts": ak.Array([list(good_wcte_pmts)]),
                         "wcte_pmts_with_timing_constant": ak.Array([pmts_with_timing_constant]),
                         "wcte_pmts_slow_control_stable": ak.Array([slow_control_stable_channels]),
+                        "manually_masked_pmts": ak.Array([list(manually_masked_pmts)]),
                         "slow_control_file_name": [good_run_list_path],
                         "slow_control_file_hash": [short_hash],
                         "readout_window_file": [readout_window_file_name],
@@ -174,10 +182,12 @@ if __name__ == "__main__":
                         
                         has_time_constant = np.isin(hit_global_id_flat,pmts_with_timing_constant)
                         is_sc_stable = np.isin(hit_global_id_flat,slow_control_stable_channels)
+                        is_manually_masked = np.isin(hit_global_id_flat,manually_masked_pmts)
                         #make the hit level bitmask
                         hit_mask_flat = np.zeros_like(hit_global_id_flat, dtype=np.int32)
                         hit_mask_flat |= ~has_time_constant * HitMask.NO_TIMING_CONSTANT.value
                         hit_mask_flat |= ~is_sc_stable * HitMask.SLOW_CONTROL_EXCLUDED.value
+                        hit_mask_flat |= is_manually_masked * HitMask.MANUALLY_MASKED.value
                         hit_mask = ak.unflatten(hit_mask_flat,ak.num(hit_global_id))
                         
                         #append to tree
