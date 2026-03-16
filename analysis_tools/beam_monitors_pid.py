@@ -300,7 +300,7 @@ class BeamAnalysis:
     def end_analysis(self):
         self.pdf_global.close()
         
-    def open_file(self, n_events = -1, require_t5 = False, first_tdc_only = True, enforce_tdc_qdc_match = True, input_file = None):
+    def open_file(self, n_events = -1, require_t5 = False, first_tdc_only = True, enforce_tdc_qdc_match = True, input_file = None, output_file = None):
         '''Read in the data as a pandas dataframe, read in the TOF and the ACt information'''
         
         self.require_t5_hit = require_t5
@@ -871,6 +871,20 @@ class BeamAnalysis:
             
         print(f"\n \n When T5 requirement is {self.require_t5_hit} the fraction of events kept for analysis is {len(self.df)/len(self.df_all) * 100}% \n \n")
         
+        if len(self.df) == 0:
+            #implement default values so we do not have a crash when trying to run 
+            self.eveto_cut = -999
+            self.act35_cut_pi_mu = -999
+            self.mu_tag_cut = -999
+            self.using_mu_tag_cut = 0
+            
+            for is_particle in ["is_electron", "is_muon", "is_pion", "is_proton", "is_deuteron", "is_helium3"]:
+                self.df[is_particle] = False
+
+            
+            self.output_to_root(output_file, scalar_info = False)
+            raise Exception("No triggers are accepted for analysis, exiting early")
+        
         #this will be necessary for identifying events later
         self.is_kept = is_kept
         
@@ -992,8 +1006,12 @@ class BeamAnalysis:
             self.df["is_electron"] = (self.df["act_eveto"]>self.eveto_cut)
                                                
         n_electrons = sum(self.df["is_electron"])
-        n_triggers = len(self.df["is_electron"])
-        print(f"A total of {n_electrons} electrons are tagged with ACT02 out of {n_triggers}, i.e. {n_electrons/n_triggers * 100:.1f}% of the dataset")
+        n_triggers = len(self.df["act_eveto"])
+        
+        if n_triggers > 0:
+            print(f"A total of {n_electrons} electrons are tagged with ACT02 out of {n_triggers}, i.e. {n_electrons/n_triggers * 100:.1f}% of the dataset")
+        else:
+             print(f"A total of {n_triggers} triggers have been found")
         
         
     def tag_multiple_particle_events(self):
@@ -1219,11 +1237,17 @@ class BeamAnalysis:
         n_deuteron = sum(self.df["is_deuteron"]==True)
         
         n_helium3 = sum(self.df["is_helium3"]==True)
-        n_triggers = len(self.df["is_proton"])
+        n_triggers = len(self.df["act_eveto"])
         
-        print(f"A total of {n_protons} protons and {n_deuteron} deuterons nuclei are tagged using the TOF out of {n_triggers}, i.e. {n_protons/n_triggers * 100:.1f}% of the dataset are protons and {n_deuteron/n_triggers * 100:.1f}% are deuteron")
+       
         
-        print(f"A total of {n_helium3} helium3 nuclei, i.e. {n_helium3/n_triggers * 100:.2f}% of the dataset")
+        if n_triggers > 0:
+            print(f"A total of {n_protons} protons and {n_deuteron} deuterons nuclei are tagged using the TOF out of {n_triggers}, i.e. {n_protons/n_triggers * 100:.1f}% of the dataset are protons and {n_deuteron/n_triggers * 100:.1f}% are deuteron")
+            print(f"A total of {n_helium3} helium3 nuclei, i.e. {n_helium3/n_triggers * 100:.2f}% of the dataset")
+        
+        else:
+            print(f"A total of {n_triggers} triggers have been found")
+        
         
 
         
@@ -2009,9 +2033,6 @@ class BeamAnalysis:
             if layer_name == "T5_scintillator":
                 T5_time = total_tof.copy()
                 
-
-#             print("layer name: ", array_layers_name[l])
-
             live_momentum, total_tof, total_length = self.return_losses(steps, array_layers_thickness[l], particle, live_momentum, total_tof, total_length, reference_tables[array_layers_material[l]], verbose = False)
             
         #after we have gone through all of the materials, we output the initial guesses and each of the TOFs: T0-T1, T0-T4, T4-T1 (for now) Those are arrays corresponding to the theoretical tof for each of the initial momenta guesses
@@ -2711,7 +2732,7 @@ class BeamAnalysis:
             
             
             
-    def output_to_root(self, output_name = None):
+    def output_to_root(self, output_name = None, scalar_info=True):
         ''''Output the results of the beam analysis as a root file with three branches, the 1D run information (number, nominal momentum, refractive index, whether ACT5 is in the beam line), the 1D results (cut lines, number of triggers kept, total number of triggers) and the relevant varaibles '''
         if output_name == None:
             output_name = f"beam_analysis_output_R{self.run_number}.root"
@@ -2807,15 +2828,17 @@ class BeamAnalysis:
 #                 "muon_purity":np.array([self.muon_purity], dtype=np.float64),
 #                 "muon_efficiency":np.array([self.muon_efficiency], dtype=np.float64),
             }
-            for prefix, d in [("tof_mean", self.particle_tof_mean),
-                  ("tof_std", self.particle_tof_std),
-                  ("tof_eom", self.particle_tof_eom),
-                  ("momentum_mean", self.particle_mom_mean),
-                  ("momentum_eom", self.particle_mom_mean_err),
-                  ("momentum_after_beam_window_mean", self.particle_mom_final_mean),
-                  ("momentum_after_beam_window_eom", self.particle_mom_final_mean_err)]:
-                for key, value in d.items():
-                    results[f"{prefix}_{key}"] = np.array([value], dtype=np.float64)
+            
+            if scalar_info:
+                for prefix, d in [("tof_mean", self.particle_tof_mean),
+                      ("tof_std", self.particle_tof_std),
+                      ("tof_eom", self.particle_tof_eom),
+                      ("momentum_mean", self.particle_mom_mean),
+                      ("momentum_eom", self.particle_mom_mean_err),
+                      ("momentum_after_beam_window_mean", self.particle_mom_final_mean),
+                      ("momentum_after_beam_window_eom", self.particle_mom_final_mean_err)]:
+                    for key, value in d.items():
+                        results[f"{prefix}_{key}"] = np.array([value], dtype=np.float64)
 
                     
 #             results["n_electrons"] = np.array([sum(self.df_all["is_electron"]) ], dtype=np.float64) 
