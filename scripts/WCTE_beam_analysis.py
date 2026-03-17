@@ -81,7 +81,7 @@ for input_file in args.input_files:
 
     #Store into memory the number of events desired,
     # set require_t5 to False if you do not require that the particle reaches T5
-    ana.open_file(n_events, require_t5 = True, input_file = input_file)
+    ana.open_file(n_events, require_t5 = True, input_file = input_file, output_file=output_filename)
 
     #Step 2: Adjust the 1pe calibration: need to check the accuracy on the plots
     ana.adjust_1pe_calibration()
@@ -89,7 +89,7 @@ for input_file in args.input_files:
     #Step 3: proton and heavier particle tagging with T0-T1 TOF
     #We need to tag protons before any other particles to avoid double-counting
     ana.tag_protons_TOF()
-#TODO: identify protons that produce knock-on electrons
+    #TODO: identify protons that produce knock-on electrons
 
 
     #Step 4: tag electrons using ACT0-2 finding the minimum in the cut line
@@ -102,6 +102,7 @@ for input_file in args.input_files:
     #at least 0.5% of muons and pions are above the cut line (at hiogh momentum). This is necessary in case the 
     #Number of particles is too high to clearly see a minimum between the muons and pions
     ana.tag_muons_pions_ACT35()
+
 
     #This corrects any offset in the TOF (e.g. from cable length) that can cause the TOF 
     #of electrons to be different from L/c This has to be calibrated to give meaningful momentum 
