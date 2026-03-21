@@ -163,7 +163,9 @@ def get_slow_control_trigger_mask(run_number_str, trigger_times, run_data):
         elif "crashed" in prob:
             bad_mask = np.logical_or(bad_mask, trigger_times > (run_data["end"] - 30))
         else:
-            raise ValueError(f"Unhandled slow control problem type: '{prob}'")
+            pass
+            #only crashes and dropped events should be masked
+            # raise ValueError(f"Unhandled slow control problem type: '{prob}'")
     return np.logical_not(bad_mask)
 
 
