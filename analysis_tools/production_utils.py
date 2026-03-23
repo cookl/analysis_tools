@@ -117,6 +117,17 @@ def get_stable_mpmt_list_slow_control(run_data):
     return enabled_channels, channel_mask
 
 
+def get_channels_masked_by_problem(run_data, problem):
+    """Return the set of channels (in card-channel format) masked due to a specific problem.
+    Returns an empty set if 'mask_by_problem' doesn't exist or the problem isn't in it."""
+    if "mask_by_problem" not in run_data:
+        return set()
+    mask_dict = run_data["mask_by_problem"]
+    if problem not in mask_dict:
+        return set()
+    return set(mask_dict[problem])
+
+
 # ── PMT channel mapping ────────────────────────────────────────────────────────
 def slot_pos_from_card_chan_list(card_chan_list):
     """Convert a collection of card-channel identifiers to slot-position identifiers.
