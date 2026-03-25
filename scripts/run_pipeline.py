@@ -80,12 +80,12 @@ if __name__ == "__main__":
         # Default: run all pipeline steps (None tells the pipeline function to use its own default)
         trigger_type_pipeline_steps = None
         run_trigger_pipeline        = True
-        run_vme_processing          = (beam_analysis_type == "normal")
+        run_vme_processing          = (beam_analysis_type in ["normal", "missing_act"])
         run_t5_analysis             = True
     else:
         #user has specified steps to run specific steps
         requested                   = set(args.steps)
-        run_vme_processing          = (beam_analysis_type == "normal") and "beam" in requested
+        run_vme_processing          = (beam_analysis_type in ["normal", "missing_act"]) and "beam" in requested
         run_t5_analysis             = "t5" in requested
         pipeline_requested          = requested - {"beam", "t5"}
         trigger_type_pipeline_steps = pipeline_requested or None
@@ -138,6 +138,8 @@ if __name__ == "__main__":
             + ["-i"] + args.input_files
             + (["--debug"] if args.debug else [])
         )
+        if beam_analysis_type == "missing_act":
+            beam_cmd.append("--no_acts")
         result = subprocess.run(beam_cmd)
         if result.returncode != 0:
             print(f"[ERROR] Beam analysis failed for run {args.run_number}")
