@@ -1,6 +1,6 @@
-import math
 import awkward as ak
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 
 from typing import Callable, Any, Optional, Union, Tuple
@@ -140,147 +140,91 @@ class BeamSelection:
     # ------------------------------------------------------------------
 
     @classmethod
-    def electron(cls, act_eveto_spec, proton_tof_cut=0, extra_cuts=None):
+    def electron(cls, *cuts):
         """
-        Electrons: fast particles (below proton TOF) that are above threshold
-        in the upstream ACT (act_eveto), which only electrons trigger at most momenta.
+        Electrons: fast particles above threshold in the upstream ACT (act_eveto).
+        Pass all cuts as [variable, operator, value] triplets.
 
-        Parameters
-        ----------
-        act_eveto_spec : list   cut specification [variable, operator, value],
-                                e.g. ["act_eveto", ">", threshold]
-        proton_tof_cut : float  TOF value separating fast from slow particles [ns]
-                                set to 0 if TOF separation is not available
-        extra_cuts     : list of [variable, operator, value] specs, optional
+        Typical cuts
+        ------------
+        ["act_eveto", ">", act_eveto_cut]
+        ["tof",       "<", proton_tof_cut]   # omit if TOF info is unavailable
         """
         sel = cls("electron")
-        _add_fast_particle_cut(sel, proton_tof_cut)
-        sel.add(_parse_cut_spec(act_eveto_spec))
-        if extra_cuts:
-            for spec in extra_cuts:
-                sel.add(_parse_cut_spec(spec))
+        for spec in cuts:
+            sel.add(_parse_cut_spec(spec))
         return sel
 
     @classmethod
-    def muon(cls, act_eveto_spec, act_tagger_spec, proton_tof_cut=0, extra_cuts=None):
+    def muon(cls, *cuts):
         """
-        Muons: fast particles, below threshold in the upstream ACT (act_eveto),
+        Muons: fast particles, below threshold in the upstream ACT (act_eveto)
         and above threshold in the downstream ACT (act_tagger).
+        Pass all cuts as [variable, operator, value] triplets.
 
-        Parameters
-        ----------
-        act_eveto_spec  : list   cut specification [variable, operator, value],
-                                 e.g. ["act_eveto", "<", threshold]
-        act_tagger_spec : list   cut specification [variable, operator, value],
-                                 e.g. ["act_tagger", ">", threshold]
-        proton_tof_cut  : float  TOF value separating fast from slow particles [ns]
-                                 set to 0 if TOF separation is not available
-        extra_cuts      : list of [variable, operator, value] specs, optional
-                          e.g. [["mu_tag_total", ">", mu_tag_cut]]
+        Typical cuts
+        ------------
+        ["act_eveto",    "<", act_eveto_cut]
+        ["act_tagger",   ">", act_tagger_cut]
+        ["tof",          "<", proton_tof_cut]   # omit if TOF info is unavailable
+        ["mu_tag_total", ">", mu_tag_cut]        # optional extra cut
         """
         sel = cls("muon")
-        _add_fast_particle_cut(sel, proton_tof_cut)
-        sel.add(_parse_cut_spec(act_eveto_spec))
-        sel.add(_parse_cut_spec(act_tagger_spec))
-        if extra_cuts:
-            for spec in extra_cuts:
-                sel.add(_parse_cut_spec(spec))
+        for spec in cuts:
+            sel.add(_parse_cut_spec(spec))
         return sel
 
     @classmethod
-    def kaon(cls, act_eveto_spec, act_tagger_spec, proton_tof_cut=0, extra_cuts=None):
+    def kaon(cls, *cuts):
         """
-        Kaons: fast particles, below threshold in the upstream ACT (act_eveto),
+        Kaons: fast particles, below threshold in the upstream ACT (act_eveto)
         and above threshold in the downstream ACT (act_tagger).
+        Pass all cuts as [variable, operator, value] triplets.
 
-        Parameters
-        ----------
-        act_eveto_spec  : list   cut specification [variable, operator, value],
-                                 e.g. ["act_eveto", "<", threshold]
-        act_tagger_spec : list   cut specification [variable, operator, value],
-                                 e.g. ["act_tagger", ">", threshold]
-        proton_tof_cut  : float  TOF value separating fast from slow particles [ns]
-                                 set to 0 if TOF separation is not available
-        extra_cuts      : list of [variable, operator, value] specs, optional
+        Typical cuts
+        ------------
+        ["act_eveto",  "<", act_eveto_cut]
+        ["act_tagger", ">", act_tagger_cut]
+        ["tof",        "<", proton_tof_cut]   # omit if TOF info is unavailable
         """
         sel = cls("kaon")
-        _add_fast_particle_cut(sel, proton_tof_cut)
-        sel.add(_parse_cut_spec(act_eveto_spec))
-        sel.add(_parse_cut_spec(act_tagger_spec))
-        if extra_cuts:
-            for spec in extra_cuts:
-                sel.add(_parse_cut_spec(spec))
+        for spec in cuts:
+            sel.add(_parse_cut_spec(spec))
         return sel
 
     @classmethod
-    def pion(cls, act_eveto_spec, act_tagger_spec, proton_tof_cut=0, extra_cuts=None):
+    def pion(cls, *cuts):
         """
-        Pions: fast particles, below threshold in both ACTs.
+        Pions: fast particles below threshold in both ACTs.
+        Pass all cuts as [variable, operator, value] triplets.
 
-        Parameters
-        ----------
-        act_eveto_spec  : list   cut specification [variable, operator, value],
-                                 e.g. ["act_eveto", "<", threshold]
-        act_tagger_spec : list   cut specification [variable, operator, value],
-                                 e.g. ["act_tagger", "<", threshold]
-        proton_tof_cut  : float  TOF value separating fast from slow particles [ns]
-                                 set to 0 if TOF separation is not available
-        extra_cuts      : list of [variable, operator, value] specs, optional
+        Typical cuts
+        ------------
+        ["act_eveto",  "<", act_eveto_cut]
+        ["act_tagger", "<", act_tagger_cut]
+        ["tof",        "<", proton_tof_cut]   # omit if TOF info is unavailable
         """
         sel = cls("pion")
-        _add_fast_particle_cut(sel, proton_tof_cut)
-        sel.add(_parse_cut_spec(act_eveto_spec))
-        sel.add(_parse_cut_spec(act_tagger_spec))
-        if extra_cuts:
-            for spec in extra_cuts:
-                sel.add(_parse_cut_spec(spec))
+        for spec in cuts:
+            sel.add(_parse_cut_spec(spec))
         return sel
 
     @classmethod
-    def proton(cls, proton_tof_cut, proton_tof_window=30):
+    def proton(cls, *cuts):
         """
-        Protons: TOF falls within a window above the fast/slow separation value.
-        Only usable when proton TOF information is available (proton_tof_cut > 0).
+        Protons: slow particles identified by their TOF falling in a window above
+        the fast/slow separation value.
+        Pass all cuts as [variable, operator, value] triplets.
 
-        Parameters
-        ----------
-        proton_tof_cut    : float  lower edge of the proton TOF window [ns]
-        proton_tof_window : float  width of the TOF window [ns], default 30
+        Typical cuts
+        ------------
+        ["tof", "between", [proton_tof_cut, proton_tof_cut + window]]
         """
-        if proton_tof_cut <= 1e-3 or math.isnan(proton_tof_cut):
-            raise ValueError(
-                "proton_tof_cut must be > 0 to build a proton selection. "
-                "This run does not have TOF separation available."
-            )
         sel = cls("proton")
-        sel.add(Cut(
-            name      = "proton_tof_window",
-            variable  = "vme_tof_corr",
-            func      = Cut.between(proton_tof_cut, proton_tof_cut + proton_tof_window),
-            threshold = (proton_tof_cut, proton_tof_cut + proton_tof_window),
-            direction = "between",
-        ))
+        for spec in cuts:
+            sel.add(_parse_cut_spec(spec))
         return sel
 
-
-def _add_fast_particle_cut(sel, proton_tof_cut):
-    """Add a fast-particle TOF cut to sel, or a pass-all cut if TOF is unavailable."""
-    tof = float(proton_tof_cut)
-    if tof <= 1e-3 or math.isnan(tof):
-        sel.add(Cut(
-            name      = "fast_particle_no_tof_info",
-            variable  = "vme_tof_corr",
-            func      = Cut.true(),
-            threshold = None,
-        ))
-    else:
-        sel.add(Cut(
-            name      = "fast_particle",
-            variable  = "vme_tof_corr",
-            func      = Cut.less_than(tof),
-            threshold = tof,
-            direction = "below",
-        ))
 
 
 def _parse_cut_spec(spec):
@@ -288,12 +232,24 @@ def _parse_cut_spec(spec):
     Parse a [variable, operator, value] triplet into a Cut object.
     The variable name is resolved via _VARIABLE_ALIASES, or auto-prefixed
     with 'vme_' if not found in the alias table.
-    Supported operators: '>', '<', '>=', '<='
+    Supported operators: '>', '<', '>=', '<=', 'between'
+    For 'between', value must be [low, high]: e.g. ["tof", "between", [20, 50]]
     """
     if not (isinstance(spec, (list, tuple)) and len(spec) == 3):
         raise ValueError(f"Cut spec must be [variable, operator, value], got: {spec!r}")
     var, op, value = spec
     col = _VARIABLE_ALIASES.get(var, f"vme_{var}" if not var.startswith("vme_") else var)
+    if op == "between":
+        if not (isinstance(value, (list, tuple)) and len(value) == 2):
+            raise ValueError(f"'between' requires [low, high], got: {value!r}")
+        low, high = value
+        return Cut(
+            name      = f"{var}_between_threshold",
+            variable  = col,
+            func      = Cut.between(low, high),
+            threshold = (low, high),
+            direction = "between",
+        )
     if op == ">":
         func, direction = Cut.greater_than(value), "above"
     elif op == "<":
@@ -303,7 +259,7 @@ def _parse_cut_spec(spec):
     elif op == "<=":
         func, direction = (lambda v: lambda x: x <= v)(value), "below"
     else:
-        raise ValueError(f"Unsupported operator {op!r}. Use '>', '<', '>=', or '<='.")
+        raise ValueError(f"Unsupported operator {op!r}. Use '>', '<', '>=', '<=', or 'between'.")
     return Cut(
         name      = f"{var}_{direction}_threshold",
         variable  = col,
@@ -365,6 +321,8 @@ class SelectionMonitor:
         self._edges      = {v: None for v in self._variables}
         self._sel_counts = {sel.name: {v: None for v in self._variables}
                             for sel in selections}
+        self._total      = 0
+        self._sel_total  = {sel.name: 0 for sel in selections}
 
     def _get_cut_threshold(self, variable):
         """Return the first non-None threshold found for this variable across all selections."""
@@ -376,6 +334,9 @@ class SelectionMonitor:
 
     def update(self, batch):
         masked = {sel.name: batch[sel.mask(batch)] for sel in self._selections}
+        self._total += len(batch)
+        for sel_name, sel_batch in masked.items():
+            self._sel_total[sel_name] += len(sel_batch)
         self._accumulate(batch, masked)
         self._call_count += 1
         if self._call_count % self._update_every == 0:
@@ -447,7 +408,7 @@ class SelectionMonitor:
 
             # Gray background: all events
             ax.fill_between(centers, safe, step="mid",
-                            color="gray", alpha=0.25, label="all events")
+                            color="gray", alpha=0.25, label=f"all events  ({self._total:,})")
             ax.step(centers, safe, where="mid", color="gray", alpha=0.6, linewidth=1)
 
             # Coloured overlays: per-selection events
@@ -455,8 +416,9 @@ class SelectionMonitor:
                 color      = colors[i % len(colors)]
                 sel_counts = self._sel_counts[sel.name][var]
                 if sel_counts is not None:
+                    n_sel  = self._sel_total[sel.name]
                     ax.step(centers, np.maximum(sel_counts, 0.5), where="mid",
-                            color=color, linewidth=1.8, label=sel.name)
+                            color=color, linewidth=1.8, label=f"{sel.name}  ({n_sel:,})")
 
             # Cut lines with informative labels
             for i, sel in enumerate(self._selections):
