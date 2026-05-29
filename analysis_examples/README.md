@@ -47,7 +47,7 @@ loader.get_good_wcte_pmts()             # returns (slot_ids, position_ids)
 `BeamSelection` defines particle selections using series of cuts on WCTE beam monitor (VME) data. The examples in the code show the nominal selection cuts, they should be adapted to suit your own analysis needs.
 
 
-```
+```python
 #read in the scalar results (i.e. nominal cut lines) of the VME analysis 
 vme_scalar_results = loader.get_vme_analysis_scalar_results()
 
@@ -84,7 +84,8 @@ proton_sel = BeamSelection.proton(
 
 The selections are applied within the iterating loop described above and the `SelectionMonitor` is used to monitor visually the selections. The code write out the selected batches to an external .parquet file, choose this if you want to work with large datasets. You can do quick analysis on individual batches within the 'loader.iterate' loop. 
 
-```# Enable parquet output for the selections you want to save.
+```python
+# Enable parquet output for the selections you want to save.
 # Default filename is "<particle>.parquet". Pass a path to override.
 pion_sel.enable_parquet_output(f"run{run_number}_pions.parquet")
 muon_sel.enable_parquet_output(f"run{run_number}_muons.parquet")
@@ -95,7 +96,8 @@ selections = [pion_sel, muon_sel, ele_sel, proton_sel]
 monitor    = SelectionMonitor(selections, update_every=10, vme_run_info=vme_run_info)
 ```
 
-```for i_batch, batch in enumerate(loader.iterate(verbose=False, step_size="100 MB")):
+```python
+for i_batch, batch in enumerate(loader.iterate(verbose=False, step_size="100 MB")):
     n_windows_passing += len(batch)
 
     monitor.update(batch)
