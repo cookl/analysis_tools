@@ -139,7 +139,7 @@ class WCSimPMTMapping:
             print("The specified geofile is NOT consistent with the default geofile")
         
     
-    def map_wcsim_tube_no_to_wcte_slot_pos(self, tube_no):
+    def map_wcsim_tube_no_to_wcte_slot_pos(self, tube_no, use_watchmal_npz = False):
         """
         Map WCSim tube number to WCTE slot and position.
 
@@ -155,6 +155,8 @@ class WCSimPMTMapping:
         slots, positions = mapper.map_wcsim_tube_no_to_wcte_slot_pos(tube_nos)
         """
         tube_no = np.atleast_1d(np.asarray(tube_no))
+        if use_watchmal_npz:
+            tube_no += 1 #first convert back to tube number starting at 1
         out_of_bounds = (tube_no < 0) | (tube_no >= len(self._valid_tubes))
         if np.any(out_of_bounds):
             raise ValueError("Tube number(s) not in the mapping and out of range: \n" + str(tube_no[out_of_bounds]))
@@ -165,7 +167,7 @@ class WCSimPMTMapping:
         slots, positions = result.T
         return slots.squeeze(), positions.squeeze()
     
-    def map_wcte_slot_pos_to_wcsim_tube_no(self, slot, pos):
+    def map_wcte_slot_pos_to_wcsim_tube_no(self, slot, pos, use_watchmal_npz = False):
         slot = np.atleast_1d(np.asarray(slot))
         pos = np.atleast_1d(np.asarray(pos))
         max_slot, max_pos = self._valid_slotpos.shape
@@ -174,5 +176,7 @@ class WCSimPMTMapping:
             raise ValueError("Slot/pos are not in the mapping and out of range: \n" + str(slot[out_of_bounds]) + " " + str(pos[out_of_bounds]))
         if np.any(self._valid_slotpos[slot, pos]==False):
             raise ValueError("Invalid slot/pos looked up not in mapping: \n" + str(slot[self._valid_slotpos[slot, pos]==False]) + " " + str(pos[self._valid_slotpos[slot, pos]==False]))
-
-        return self._lookup_wcte_to_tube[slot, pos]
+        tube_no = self._lookup_wcte_to_tube[slot, pos]
+        if use_watchmal_npz:
+            tube_no -= 1 #convert to tube numbers starting at 0
+        return tube_no
